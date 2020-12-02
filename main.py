@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import png
 
 parser = argparse.ArgumentParser(description='This program provide tools to crypt and uncrypt message in PNG.',
                                  epilog='Enjoy the program!')
