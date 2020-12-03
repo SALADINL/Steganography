@@ -28,16 +28,16 @@ if args.filename is not None:
         sys.exit()
 
 
-def split_by2(bin_message):
+def split_by1(bin_message):
     """
     Returns an array list with each element has only two digits.
 
     :param: bin_message : (str) A array list of ascii in binary
-    :return: array_split : (str) A array list split in 2 digits
+    :return: array_split : (str) A array list split in 1 digits
     """
     array_split = []
     for ele in bin_message:
-        array_split += [ele[i:i + 2] for i in range(0, len(ele), 2)]
+        array_split += ele
 
     return array_split
 
@@ -46,7 +46,7 @@ def seq2bin(sequence):
     """
     Returns an array list of ascii in binary.
 
-    :param sequence : (str) A array list split in 2 digits
+    :param sequence : (str) A array list split in 1 digits
     :return: array : (str) A array list of ascii in binary
     """
     array = []
@@ -64,17 +64,17 @@ def seq2bin(sequence):
 
 def hide_data(pixels_rows, bin_message):
     """
-    This function replace the 2 last lower-weight bytes of each channel (Alpha included) by
+    This function replace the latest lower-weight bytes of each channel (Alpha included) by
     two digits of the message we want to hide.
 
     :param pixels_rows : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
     :param bin_message : (str) An array list of ascii in binary
-    :return: resp : (int) A array list of interger which is the new image with the hiding message.
+    :return: resp : (int) A array list of integer which is the new image with the hiding message.
     """
 
-    sequence = split_by2(bin_message)
-    sequence += ['00', '00', '00', '00', '00', '00', '00', '00']  # Add an bytes with all bits a 00 to detect end of
-    # the message
+    sequence = split_by1(bin_message)
+    for i in range(16):
+        sequence += '0'  # Add an bytes with all bits a 0 to detect end of the message
     idx = 0
 
     resp = []
@@ -83,7 +83,7 @@ def hide_data(pixels_rows, bin_message):
         for ele in row:
             if idx < len(sequence):
                 if sequence[idx] is not None:
-                    array.append(int(ele[:len(ele) - 2] + sequence[idx], 2))
+                    array.append(int(ele[:len(ele) - 1] + sequence[idx], 2))
             else:
                 array.append(int(ele, 2))
             idx += 1
@@ -93,7 +93,7 @@ def hide_data(pixels_rows, bin_message):
 
 def revel_data(pixels_rows):
     """
-    This function read and save this last 2 digits of each channels until it find eight "00" following and stop.
+    This function read and save this last 2 digits of each channels until it find sixteen "0" following and stop.
 
     :param pixels_rows : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
     :return: Return an array list of ascii binary ['01110100', .. ]
@@ -105,13 +105,13 @@ def revel_data(pixels_rows):
     for row in pixels_rows:
         for ele in row:
             octt = str(ele)
-            if count_end == 8:
+            if count_end == 16:
                 break
-            if octt[len(octt) - 2: len(octt)] == "00":
+            if octt[len(octt) - 1: len(octt)] == "0":
                 count_end += 1
             else:
                 count_end = 0
-            sequence.append(octt[len(octt) - 2: len(octt)])
+            sequence.append(octt[len(octt) - 1: len(octt)])
 
     return seq2bin(sequence[:len(sequence) - 8])
 
@@ -206,7 +206,7 @@ def check_space(message, pixels_rows):
     :return: Return True if the message has enough space in the container.
     """
 
-    nb_bytes_needed = (len(message) * 4) + 8
+    nb_bytes_needed = (len(message) * 8) + 16
     nb_bytes_free = len(pixels_rows[0]) * len(pixels_rows)
 
     return False if nb_bytes_needed > nb_bytes_free else True
@@ -227,6 +227,7 @@ def main():
             print("Your message is  to big for the container !")
             print("The program will stop.")
             sys.exit(0)
+
         newFile = hide_data(pixels_rows, str2bin(message))
         save_output(newFile, args.file)
     else:
