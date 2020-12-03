@@ -14,28 +14,27 @@ group.add_argument("-f", "--filename", help="text to be inserted from the file f
 group.add_argument("-t", "--text", help="text to be inserted from the the command line", action="store", type=str)
 args = parser.parse_args()
 
-if args.write:
-    # TODO function writing
-    pass
-if args.text:
-    print(args.text)
-    print(args.file)
-
 if not os.path.isfile(args.file):
     print('The file doesn\'t exist')
     sys.exit()
 
 if ".png" not in args.file:
-    print('The file isn\'t a PNG')
+    print('The file isn\'t a PNG file.')
     sys.exit()
 
-if args.text is not None:
-    if ".txt" not in args.text:
-        print('The file isn\'t a TXT')
+if args.filename is not None:
+    if ".txt" not in args.filename:
+        print('The file isn\'t a TXT file.')
         sys.exit()
 
 
 def split_by2(bin_message):
+    """
+    Returns an array list with each element has only two digits.
+
+    :param: bin_message : (str) A array list of ascii in binary
+    :return: array_split : (str) A array list split in 2 digits
+    """
     array_split = []
     for ele in bin_message:
         array_split += [ele[i:i + 2] for i in range(0, len(ele), 2)]
@@ -44,6 +43,12 @@ def split_by2(bin_message):
 
 
 def seq2bin(sequence):
+    """
+    Returns an array list of ascii in binary.
+
+    :param sequence : (str) A array list split in 2 digits
+    :return: array : (str) A array list of ascii in binary
+    """
     array = []
     count = 0
 
@@ -58,44 +63,67 @@ def seq2bin(sequence):
 
 
 def hide_data(pixels_rows, bin_message):
+    """
+    This function replace the 2 last lower-weight bytes of each channel (Alpha included) by
+    two digits of the message we want to hide.
+
+    :param pixels_rows : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
+    :param bin_message : (str) An array list of ascii in binary
+    :return: resp : (int) A array list of interger which is the new image with the hiding message.
+    """
+
     sequence = split_by2(bin_message)
-    sequence += ['00', '00', '00', '00', '00', '00']
+    sequence += ['00', '00', '00', '00', '00', '00', '00', '00']  # Add an bytes with all bits a 00 to detect end of
+    # the message
     idx = 0
 
     resp = []
     for row in pixels_rows:
         array = []
-        for bin in row:
+        for ele in row:
             if idx < len(sequence):
                 if sequence[idx] is not None:
-                    array.append(int(bin[:len(bin) - 2] + sequence[idx], 2))
+                    array.append(int(ele[:len(ele) - 2] + sequence[idx], 2))
             else:
-                array.append(int(bin, 2))
+                array.append(int(ele, 2))
             idx += 1
         resp.append(array)
     return resp
 
 
 def revel_data(pixels_rows):
+    """
+    This function read and save this last 2 digits of each channels until it find eight "00" following and stop.
+
+    :param pixels_rows : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
+    :return: Return an array list of ascii binary ['01110100', .. ]
+    """
+
     sequence = []
     count_end = 0
 
     for row in pixels_rows:
         for ele in row:
-            oct = str(bin(ele))[2:].zfill(8)
-            # print(oct[len(oct) - 2: len(oct)])
-            if count_end == 6:
+            octt = str(ele)
+            if count_end == 8:
                 break
-            if oct[len(oct) - 2: len(oct)] == "00":
+            if octt[len(octt) - 2: len(octt)] == "00":
                 count_end += 1
             else:
                 count_end = 0
-            sequence.append(oct[len(oct) - 2: len(oct)])
+            sequence.append(octt[len(octt) - 2: len(octt)])
 
-    return seq2bin(sequence[:len(sequence)-6])
+    return seq2bin(sequence[:len(sequence) - 8])
 
 
 def str2bin(message):
+    """
+    Convert string to an array list of ascii in binary
+
+    :param message: (str) A string which contains the message
+    :return: Returns array list of ascii in binary
+    """
+
     bin_array = []
 
     for ele in message:
@@ -105,6 +133,13 @@ def str2bin(message):
 
 
 def bin2str(bin_array):
+    """
+    Convert an array list of ascii in binary to  string
+
+    :param bin_array: (str) An array list of ascii in binary
+    :return: Returns string which contains the message
+    """
+
     message = ""
 
     for ele in bin_array:
@@ -114,27 +149,91 @@ def bin2str(bin_array):
 
 
 def save_output(pixels_rows, filename):
+    """
+    This function will save le new image.
+
+    :param pixels_rows : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
+    :param filename: (str) Path of the file where we want to save our work.
+    :return: None
+    """
+
     newImage = png.from_array(pixels_rows, 'RGBA')
     newImage.save(filename)
 
 
-if __name__ == '__main__':
+def img2rgba(file_png):
+    """
+    This function open and read a png file to convert in an array list of pixels. FORMAT (RGBA)
 
-    bin_message = str2bin("VICTOIRE")
-
-    myImage = png.Reader(filename=args.file)
+    :param file_png: Path of png target
+    :return: array_list : (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
+    """
+    reader = png.Reader(filename=args.file)
     array_list = []
 
-    for row in myImage.asRGBA()[2]:
+    for row in reader.asRGBA()[2]:
         array = []
         p = []
         for e in row:
             p.append(str(bin(e))[2:].zfill(8))
             array.append(str(bin(e)[2:].zfill(8)))
         array_list.append(array)
+    return array_list
 
-    resp = hide_data(array_list, bin_message)
-    save_output(resp, "Mabite.png")
 
-    bin_message2 = revel_data(resp)
-    print(bin2str(bin_message2))
+def read_txt(filename):
+    """
+    This function read a txt file and store it in a string.
+
+    :param filename: Path of the txt file.
+    :return: Return a string within the message
+    """
+
+    response = ""
+    file = open(filename, 'r')
+    response = file.read()
+    file.close()
+
+    return response
+
+
+def check_space(message, pixels_rows):
+    """
+    This function evaluate if the message will fit in the file.
+
+    :param message: (str) A string which contains the message.
+    :param pixels_rows: (str) An array list of pixels in binary [r , g , b , Alpha ... ], .., [r , g , b , Alpha ... ]
+    :return: Return True if the message has enough space in the container.
+    """
+
+    nb_bytes_needed = (len(message) * 4) + 8
+    nb_bytes_free = len(pixels_rows[0]) * len(pixels_rows)
+
+    return False if nb_bytes_needed > nb_bytes_free else True
+
+
+def main():
+    pixels_rows = img2rgba(args.file)
+
+    if args.write:
+        if args.filename:
+            message = read_txt(args.filename)
+        elif args.text:
+            message = args.text
+        else:
+            message = input("Enter your message : ")
+
+        if not check_space(message, pixels_rows):
+            print("Your message is  to big for the container !")
+            print("The program will stop.")
+            sys.exit(0)
+        newFile = hide_data(pixels_rows, str2bin(message))
+        save_output(newFile, args.file)
+    else:
+        message = bin2str(revel_data(pixels_rows))
+        print("Hiding message :")
+        print(message)
+
+
+if __name__ == '__main__':
+    main()
