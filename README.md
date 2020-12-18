@@ -6,4 +6,6 @@ The project is compose of two files:
 
 You don't need any dependency. 
 
+# The latest version is in v1 branch
+
 Enjoy !! 
